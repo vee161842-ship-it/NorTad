@@ -1,0 +1,394 @@
+```html
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจองที่นั่งห้องเรียน</title>
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;700;900&display=swap');
+        body { font-family: 'Kanit', sans-serif; background-color: #050505; color: white; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #000; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // --- Firebase Configuration ---
+        // หมายเหตุ: ใช้ตัวแปรแวดล้อมที่ระบบเตรียมไว้ให้
+        const firebaseConfig = JSON.parse(window.__firebase_config || '{}');
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
+        const appId = window.__app_id || 'classroom-v1';
+
+        const STUDENT_LIST = {
+            "1": { id: "16572", name: "ด.ช.กรวัฒน์ ผดาวัน" },
+            "2": { id: "16573", name: "ด.ช.ชนพัฒน์ บุญดี" },
+            "3": { id: "16574", name: "ด.ช.ณัฐกฤต แซ่เตีย" },
+            "4": { id: "16575", name: "ด.ช.ณัฐนันท์ แซ่โอ่ว" },
+            "5": { id: "16576", name: "ด.ช.ณัฐสิทธิ์ ชะรารัมย์" },
+            "6": { id: "16577", name: "ด.ช.ดนย์ศิรา ฟักทองพรรณ" },
+            "7": { id: "16578", name: "ด.ช.ต้นแรม ต้นสิงห์" },
+            "8": { id: "16579", name: "ด.ช.เตชิษฐ์ กาเจริญ" },
+            "9": { id: "16580", name: "ด.ช.ธนภูมิ นาคบุตร" },
+            "10": { id: "16581", name: "ด.ช.ธีรดนย์ นามวิจิตร" },
+            "11": { id: "16582", name: "ด.ช.นพดล ทองจันทร์" },
+            "12": { id: "16583", name: "ด.ช.ปัณณทัต อินทปัตย์" },
+            "13": { id: "16584", name: "ด.ช.ปัณณวิชญ์ พลวลัยรัตน์" },
+            "14": { id: "16585", name: "ด.ช.พัธรกฤษฎิ์ สว่างแก้ว" },
+            "15": { id: "16586", name: "ด.ช.พัทรศักดิ์ โพธะกัน" },
+            "16": { id: "16587", name: "ด.ช.พิรุฬห์กร ทองดี" },
+            "17": { id: "16588", name: "ด.ช.พีระพล คำพันชนะ" },
+            "18": { id: "16589", name: "ด.ช.ภูพัฒน์ แสนกุล" },
+            "19": { id: "16590", name: "ด.ช.สุรเชษฐ์ จอมโคตร" },
+            "20": { id: "16591", name: "ด.ช.เอกวิศว์ สุขลิ้ม" },
+            "21": { id: "16592", name: "ด.ญ.กรมาณี ทองลือ" },
+            "22": { id: "16593", name: "ด.ญ.ครองขวัญ สร้อยสูงเนิน" },
+            "23": { id: "16594", name: "ด.ญ.จิระประไพ ฉัตรทัน" },
+            "24": { id: "16595", name: "ด.ญ.ญาดาจันทมาศ ทองรักษ์" },
+            "25": { id: "16596", name: "ด.ญ.ณพิชญา หนูปลอด" },
+            "26": { id: "16597", name: "ด.ญ.ธนพร เกิดพุ่ม" },
+            "27": { id: "16598", name: "ด.ญ.ธนัญญา โพธิ์มี" },
+            "28": { id: "16599", name: "ด.ญ.ธัญญาภิทย์ กุยยาวัฒนานนท์" },
+            "29": { id: "16600", name: "ด.ญ.ธัญลักษณ์ เหงสกุล" },
+            "30": { id: "16601", name: "ด.ญ.ธันยภรณ์ ยิ่งผล" },
+            "31": { id: "16602", name: "ด.ญ.ธีรนาฏ สิทธิมงคล" },
+            "32": { id: "16603", name: "ด.ญ.นพกาญจน์ ไตรรวรรัตน์" },
+            "33": { id: "16604", name: "ด.ญ.นิชาภัทร ไชยพร" },
+            "34": { id: "16605", name: "ด.ญ.ปัญณวีร์ ชัยมาลา" },
+            "35": { id: "16606", name: "ด.ญ.พาขวัญ อนันตวงษ์" },
+            "36": { id: "16607", name: "ด.ญ.ภคพร ประเสริฐไทย" },
+            "37": { id: "16608", name: "ด.ญ.วิชญา ศรีหริ่ง" },
+            "38": { id: "16609", name: "ด.ญ.วิภาดา ภู่เอี่ยม" },
+            "39": { id: "16610", name: "ด.ญ.วิลาสินี รอดภัย" },
+            "40": { id: "16611", name: "ด.ญ.ศิรินภา ศรีวิเศษ" },
+            "3205": { id: "ADMIN", name: "อาจารย์ / ผู้ดูแลระบบ" }
+        };
+
+        const ROWS = 4;
+        const COLS = 5;
+
+        // Icon Component using Lucide
+        const Icon = ({ name, size = 24, className = "" }) => {
+            useEffect(() => {
+                lucide.createIcons();
+            }, [name]);
+            return <i data-lucide={name} style={{ width: size, height: size }} className={className}></i>;
+        };
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [loginRole, setLoginRole] = useState(null);
+            const [inputNo, setInputNo] = useState('');
+            const [currentUserData, setCurrentUserData] = useState(null);
+            const [showConfirmLogin, setShowConfirmLogin] = useState(false);
+            const [isLoggedIn, setIsLoggedIn] = useState(false);
+            const [seats, setSeats] = useState({});
+            const [selectedSeat, setSelectedSeat] = useState(null);
+            const [isAdminMode, setIsAdminMode] = useState(false);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                const initAuth = async () => {
+                    try {
+                        const token = window.__initial_auth_token;
+                        if (token) {
+                            await auth.signInWithCustomToken(token);
+                        } else {
+                            await auth.signInAnonymously();
+                        }
+                    } catch (err) {
+                        console.error("Auth error:", err);
+                    }
+                };
+                initAuth();
+                const unsubscribe = auth.onAuthStateChanged((u) => {
+                    setUser(u);
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                const seatsRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('seats');
+                const unsubscribe = seatsRef.onSnapshot((snapshot) => {
+                    const data = {};
+                    snapshot.forEach(doc => data[doc.id] = doc.data());
+                    setSeats(data);
+                });
+                return () => unsubscribe();
+            }, [user]);
+
+            const handleLoginSubmit = (e) => {
+                e.preventDefault();
+                if (loginRole === 'admin') {
+                    if (inputNo === '3205') {
+                        setCurrentUserData(STUDENT_LIST["3205"]);
+                        setIsAdminMode(true);
+                        setIsLoggedIn(true);
+                    } else {
+                        alert("รหัสผู้ดูแลระบบไม่ถูกต้อง");
+                    }
+                    return;
+                }
+                const student = STUDENT_LIST[inputNo];
+                if (student && inputNo !== '3205') {
+                    setCurrentUserData({ no: inputNo, ...student });
+                    setShowConfirmLogin(true);
+                } else {
+                    alert("ไม่พบเลขที่นักเรียนนี้");
+                }
+            };
+
+            const confirmBooking = async () => {
+                if (!selectedSeat || !user) return;
+                const seatKey = `${selectedSeat.row}-${selectedSeat.col}-${selectedSeat.side}`;
+                const seatRef = db.collection('artifacts').doc(appId).collection('public').doc('data').collection('seats').doc(seatKey);
+                
+                try {
+                    await seatRef.set({
+                        no: currentUserData.no,
+                        name: currentUserData.name,
+                        bookedBy: user.uid,
+                        row: selectedSeat.row + 1,
+                        col: selectedSeat.col + 1,
+                        side: selectedSeat.side,
+                        timestamp: Date.now()
+                    });
+                    setSelectedSeat(null);
+                } catch (err) {
+                    console.error("Booking error:", err);
+                }
+            };
+
+            const handleSeatClick = (r, c, side) => {
+                const key = `${r}-${c}-${side}`;
+                const data = seats[key];
+                if (isAdminMode && data) {
+                    if (confirm(`ต้องการลบการจองของเลขที่ ${data.no} หรือไม่?`)) {
+                        db.collection('artifacts').doc(appId).collection('public').doc('data').collection('seats').doc(key).delete();
+                    }
+                    return;
+                }
+                if (data) return;
+                setSelectedSeat({ row: r, col: c, side });
+            };
+
+            if (loading) return (
+                <div className="h-screen flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p className="text-blue-500 font-bold">กำลังเชื่อมต่อฐานข้อมูล...</p>
+                </div>
+            );
+
+            if (!isLoggedIn) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        {!loginRole ? (
+                            <div className="w-full max-w-md space-y-4">
+                                <div className="text-center mb-10">
+                                    <div className="bg-blue-600/20 w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4 border border-blue-500/30">
+                                        <Icon name="armchair" size={40} className="text-blue-500" />
+                                    </div>
+                                    <h1 className="text-4xl font-black text-white tracking-tight">Classroom Seating</h1>
+                                    <p className="text-gray-500 mt-2">เลือกประเภทผู้ใช้งานเพื่อเข้าสู่ระบบ</p>
+                                </div>
+                                
+                                <button onClick={() => setLoginRole('student')} className="w-full bg-[#111] border border-gray-800 p-6 rounded-3xl flex items-center gap-6 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all group">
+                                    <div className="w-14 h-14 bg-blue-600/20 rounded-2xl flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                                        <Icon name="user" size={32} />
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-xl font-bold text-white">นักเรียน</h3>
+                                        <p className="text-gray-500 text-sm">จองที่นั่งด้วยเลขที่ของคุณ</p>
+                                    </div>
+                                </button>
+
+                                <button onClick={() => setLoginRole('admin')} className="w-full bg-[#111] border border-gray-800 p-6 rounded-3xl flex items-center gap-6 hover:border-red-500/50 hover:bg-red-500/5 transition-all group">
+                                    <div className="w-14 h-14 bg-red-600/20 rounded-2xl flex items-center justify-center text-red-500 group-hover:scale-110 transition-transform">
+                                        <Icon name="shield-check" size={32} />
+                                    </div>
+                                    <div className="text-left">
+                                        <h3 className="text-xl font-bold text-white">ผู้ดูแลระบบ</h3>
+                                        <p className="text-gray-500 text-sm">จัดการข้อมูลการจองทั้งหมด</p>
+                                    </div>
+                                </button>
+                            </div>
+                        ) : !showConfirmLogin ? (
+                            <div className="bg-[#111] p-8 rounded-[2rem] w-full max-w-sm border border-gray-800 shadow-2xl">
+                                <button onClick={() => setLoginRole(null)} className="text-gray-500 hover:text-white flex items-center gap-2 mb-8 text-sm transition-colors font-bold">
+                                    <Icon name="chevron-left" size={18} /> ย้อนกลับ
+                                </button>
+                                <h2 className="text-3xl font-black text-white mb-2">
+                                    {loginRole === 'admin' ? 'Admin Login' : 'Student Login'}
+                                </h2>
+                                <p className="text-gray-500 text-sm mb-8">
+                                    {loginRole === 'admin' ? 'ระบุรหัสผ่านเข้าถึงระบบจัดการ' : 'ระบุเลขที่ประจำตัวนักเรียนของคุณ'}
+                                </p>
+                                <form onSubmit={handleLoginSubmit}>
+                                    <input 
+                                        type={loginRole === 'admin' ? "password" : "number"}
+                                        required
+                                        autoFocus
+                                        className={`w-full bg-black border border-gray-800 rounded-2xl p-5 text-center text-4xl font-black text-white focus:outline-none focus:ring-2 transition-all mb-6 ${loginRole === 'admin' ? 'focus:ring-red-600' : 'focus:ring-blue-600'}`}
+                                        placeholder={loginRole === 'admin' ? "••••" : "00"}
+                                        value={inputNo}
+                                        onChange={e => setInputNo(e.target.value)}
+                                    />
+                                    <button className={`w-full text-white font-bold py-5 rounded-2xl transition-all shadow-lg active:scale-95 text-lg ${loginRole === 'admin' ? 'bg-red-600 hover:bg-red-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
+                                        ยืนยัน
+                                    </button>
+                                </form>
+                            </div>
+                        ) : (
+                            <div className="bg-[#111] p-8 rounded-[2rem] w-full max-w-sm border border-blue-900/50 shadow-2xl">
+                                <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                                    <Icon name="shield-alert" className="text-blue-500" /> ยืนยันข้อมูล
+                                </h2>
+                                <div className="space-y-4 mb-8">
+                                    <div className="bg-black/50 p-5 rounded-2xl border border-gray-800">
+                                        <p className="text-xs text-gray-500 uppercase mb-1 font-bold">เลขที่ {currentUserData.no}</p>
+                                        <p className="text-2xl font-black text-blue-400">{currentUserData.name}</p>
+                                    </div>
+                                    <div className="bg-black/50 p-5 rounded-2xl border border-gray-800">
+                                        <p className="text-xs text-gray-500 uppercase mb-1 font-bold">รหัสนักเรียน</p>
+                                        <p className="text-lg font-bold text-white">{currentUserData.id}</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4">
+                                    <button onClick={() => setShowConfirmLogin(false)} className="flex-1 py-4 text-gray-500 font-bold hover:text-white transition-colors">ไม่ใช่ฉัน</button>
+                                    <button onClick={() => setIsLoggedIn(true)} className="flex-[2] bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-lg active:scale-95">ข้อมูลถูกต้อง</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen p-4 md:p-8">
+                    <div className="max-w-[1200px] mx-auto">
+                        <header className="flex justify-between items-center mb-8 bg-[#111] p-5 rounded-[1.5rem] border border-gray-800 shadow-xl">
+                            <div className="flex items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl ${isAdminMode ? 'bg-red-600' : 'bg-blue-600 shadow-lg shadow-blue-900/30'}`}>
+                                    {isAdminMode ? <Icon name="shield" size={24} /> : currentUserData.no}
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest leading-none mb-1">{isAdminMode ? 'ADMIN MODE' : 'STUDENT'}</p>
+                                    <p className={`font-bold text-lg ${isAdminMode ? 'text-red-400' : 'text-blue-400'}`}>{currentUserData.name}</p>
+                                </div>
+                            </div>
+                            <button onClick={() => window.location.reload()} className="p-3 hover:bg-red-500/10 rounded-2xl text-gray-600 hover:text-red-500 transition-all border border-transparent hover:border-red-500/30">
+                                <Icon name="log-out" />
+                            </button>
+                        </header>
+
+                        {isAdminMode && (
+                            <div className="mb-6 bg-red-600/10 border border-red-500/30 p-4 rounded-2xl flex items-center gap-3 text-red-500 text-sm font-bold">
+                                <Icon name="info" size={18} /> โหมดจัดการ: คลิกที่นั่งที่จองแล้วเพื่อล้างข้อมูล
+                            </div>
+                        )}
+
+                        <div className="relative bg-[#080808] border-2 border-gray-900 rounded-[3rem] p-6 md:p-12 min-h-[600px] overflow-x-auto shadow-2xl custom-scrollbar mb-8">
+                            {/* Board Area */}
+                            <div className="flex justify-between items-start mb-24 min-w-[800px]">
+                                <div className="w-20 h-24 border-2 border-red-900/40 bg-red-950/5 rounded-2xl flex items-center justify-center text-red-900 font-black text-xs uppercase tracking-widest rotate-[-5deg]">Board</div>
+                                <div className="flex-1 max-w-[500px] mx-8 h-1 bg-gradient-to-r from-transparent via-slate-800 to-transparent flex items-center justify-center">
+                                    <span className="bg-[#080808] px-8 text-slate-700 font-black tracking-[1em] text-[10px] uppercase">Whiteboard Area</span>
+                                </div>
+                                <div className="w-20 h-24 border-2 border-red-900/40 bg-red-950/5 rounded-2xl flex items-center justify-center text-red-900 font-black text-xs uppercase tracking-widest rotate-[5deg]">Board</div>
+                                <div className="absolute top-28 right-16 w-36 h-20 border-2 border-green-900/30 bg-green-950/5 rounded-[2rem] flex flex-col items-center justify-center text-green-800 font-black text-[10px] uppercase gap-1">
+                                    <Icon name="user-check" size={16} /> Teacher's Desk
+                                </div>
+                            </div>
+
+                            {/* Seating Grid */}
+                            <div className="grid grid-rows-4 gap-16 md:gap-20 mt-32 min-w-[800px] px-4">
+                                {Array.from({ length: ROWS }).map((_, r) => (
+                                    <div key={r} className="flex justify-between items-center gap-6">
+                                        {Array.from({ length: COLS }).map((_, c) => {
+                                            const keyL = `${r}-${c}-L`;
+                                            const keyR = `${r}-${c}-R`;
+                                            return (
+                                                <div key={c} className="flex-1 max-w-[160px] flex border-2 border-blue-950/30 bg-[#111]/40 rounded-3xl overflow-hidden h-20 md:h-28 relative shadow-xl hover:border-blue-500/30 transition-all">
+                                                    <SeatButton r={r} c={c} side="L" data={seats[keyL]} currentNo={currentUserData.no} onClick={() => handleSeatClick(r, c, 'L')} />
+                                                    <div className="w-[1px] bg-blue-950/20 h-full"></div>
+                                                    <SeatButton r={r} c={c} side="R" data={seats[keyR]} currentNo={currentUserData.no} onClick={() => handleSeatClick(r, c, 'R')} />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <footer className="flex flex-wrap gap-8 justify-center items-center text-[10px] font-black tracking-[0.2em] text-gray-700 uppercase pb-12">
+                            <div className="flex items-center gap-2"><div className="w-4 h-4 border-2 border-blue-950 rounded-lg"></div> Available</div>
+                            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-emerald-600 rounded-lg shadow-sm"></div> Occupied</div>
+                            <div className="flex items-center gap-2"><div className="w-4 h-4 bg-blue-600 rounded-lg shadow-sm shadow-blue-900"></div> Your Seat</div>
+                        </footer>
+                    </div>
+
+                    {selectedSeat && (
+                        <div className="fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-6 z-50">
+                            <div className="bg-[#111] border border-blue-900/30 rounded-[3rem] p-10 w-full max-w-sm shadow-2xl text-center">
+                                <div className="bg-blue-600/10 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                                    <Icon name="armchair" className="text-blue-500" size={32} />
+                                </div>
+                                <h3 className="text-2xl font-black mb-2">ยืนยันเลือกที่นั่ง?</h3>
+                                <p className="text-gray-500 mb-8 text-sm">ที่นั่ง: แถว {selectedSeat.row + 1} | กลุ่ม {selectedSeat.col + 1} ({selectedSeat.side === 'L' ? 'ซ้าย' : 'ขวา'})</p>
+                                
+                                <div className="flex gap-4">
+                                    <button onClick={() => setSelectedSeat(null)} className="flex-1 py-4 text-gray-500 font-bold hover:text-white transition-colors">ยกเลิก</button>
+                                    <button onClick={confirmBooking} className="flex-[2] py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black shadow-lg active:scale-95 transition-transform">จองที่นั่ง</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        function SeatButton({ r, c, side, data, currentNo, onClick }) {
+            const isBooked = !!data;
+            const isMine = data?.no === currentNo;
+            return (
+                <button onClick={onClick} className={`flex-1 flex flex-col items-center justify-center transition-all relative ${isBooked ? (isMine ? 'bg-blue-600 text-white' : 'bg-emerald-600/80 text-white') : 'hover:bg-blue-500/10 text-gray-900'}`}>
+                    <Icon name="armchair" size={window.innerWidth < 768 ? 16 : 28} className={`${isBooked ? 'opacity-100' : 'opacity-20'}`} />
+                    {isBooked ? (
+                        <span className="text-[10px] font-black mt-1 leading-none">{isMine ? "ME" : `N.${data.no}`}</span>
+                    ) : (
+                        <span className="text-[8px] font-black opacity-0 hover:opacity-40 absolute bottom-1 uppercase tracking-widest">{side}</span>
+                    )}
+                </button>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+```
